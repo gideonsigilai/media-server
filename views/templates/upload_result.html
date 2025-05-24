@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}}</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="/static/css/settings.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
+</head>
+<body>
+    <div class="settings-container">
+        <header class="settings-header">
+            <div class="settings-nav">
+                <a href="/" class="nav-link">
+                    <span class="nav-icon">🏠</span>
+                    Browse
+                </a>
+                <a href="/library" class="nav-link">
+                    <span class="nav-icon">📚</span>
+                    Library
+                </a>
+                <a href="/settings" class="nav-link">
+                    <span class="nav-icon">⚙️</span>
+                    Settings
+                </a>
+            </div>
+        </header>
+
+        <main class="settings-main">
+            <div class="upload-results">
+                <h1>Upload Results</h1>
+                
+                {{if .Success}}
+                    <div class="alert alert-success">
+                        <h3>✅ Upload Successful!</h3>
+                        <p>{{len .UploadedFiles}} file(s) uploaded successfully:</p>
+                        <ul class="file-list">
+                            {{range .UploadedFiles}}
+                                <li class="file-item success">📁 {{.}}</li>
+                            {{end}}
+                        </ul>
+                    </div>
+                {{end}}
+                
+                {{if .Errors}}
+                    <div class="alert alert-error">
+                        <h3>⚠️ Upload Errors</h3>
+                        <p>The following errors occurred:</p>
+                        <ul class="error-list">
+                            {{range .Errors}}
+                                <li class="error-item">❌ {{.}}</li>
+                            {{end}}
+                        </ul>
+                    </div>
+                {{end}}
+                
+                <div class="result-actions">
+                    <a href="/settings" class="btn btn-primary">Back to Settings</a>
+                    <a href="/library" class="btn btn-secondary">View Library</a>
+                    <a href="/" class="btn btn-secondary">Browse Files</a>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+</body>
+</html>

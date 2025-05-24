@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}}</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 class="header-title">
+                <span class="header-icon">🎬</span>
+                Media Server
+            </h1>
+            <div class="header-actions">
+                <a href="/library" class="library-link">
+                    <span class="library-icon">📚</span>
+                    Library
+                </a>
+                <a href="/settings" class="settings-link">
+                    <span class="settings-icon">⚙️</span>
+                    Settings
+                </a>
+                <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
+                    <span class="theme-icon">🌙</span>
+                </button>
+            </div>
+        </header>
+
+        <main class="main-content">
+<nav class="breadcrumb" aria-label="Breadcrumb navigation">
+    <ol class="breadcrumb-list">
+        <li class="breadcrumb-item">
+            <a href="/" class="breadcrumb-link">
+                <span class="breadcrumb-icon">🏠</span>
+                Home
+            </a>
+        </li>
+        {{if .CurrentPath}}
+            {{$parts := splitPath .CurrentPath}}
+            {{$path := ""}}
+            {{range $index, $part := $parts}}
+                {{$path = joinPath $path $part}}
+                <li class="breadcrumb-item">
+                    <span class="breadcrumb-separator">/</span>
+                    <a href="/{{$path}}" class="breadcrumb-link">{{$part}}</a>
+                </li>
+            {{end}}
+        {{end}}
+    </ol>
+</nav>
+
+<div class="file-browser">
+    <div class="file-browser-header">
+        <h2 class="file-browser-title">
+            {{if .CurrentPath}}
+                {{.CurrentPath}}
+            {{else}}
+                Root Directory
+            {{end}}
+        </h2>
+        <div class="file-browser-stats">
+            <span class="file-count">{{len .Files}} items</span>
+        </div>
+    </div>
+
+    {{if .Files}}
+        <div class="file-grid">
+            {{if .CurrentPath}}
+                <div class="file-item file-item-parent">
+                    <a href="/{{.ParentPath}}" class="file-link">
+                        <div class="file-icon">📁</div>
+                        <div class="file-info">
+                            <div class="file-name">..</div>
+                            <div class="file-meta">Parent Directory</div>
+                        </div>
+                    </a>
+                </div>
+            {{end}}
+
+            {{range .Files}}
+                <div class="file-item {{if .IsDir}}file-item-directory{{else}}file-item-file{{end}} {{if .IsMedia}}file-item-media{{end}}">
+                    <a href="/{{.Path}}" class="file-link">
+                        <div class="file-icon">
+                            {{if .IsDir}}📁{{else if .IsMedia}}🎬{{else}}📄{{end}}
+                        </div>
+                        <div class="file-info">
+                            <div class="file-name" title="{{.Name}}">{{.Name}}</div>
+                            <div class="file-meta">
+                                {{if .IsDir}}
+                                    Directory
+                                {{else}}
+                                    <span class="file-size">{{formatFileSize .Size}}</span>
+                                    {{if .Extension}}
+                                        <span class="file-extension">{{.Extension}}</span>
+                                    {{end}}
+                                    {{if .IsMedia}}
+                                        <span class="file-type">media</span>
+                                    {{end}}
+                                {{end}}
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            {{end}}
+        </div>
+    {{else}}
+        <div class="empty-directory">
+            <div class="empty-icon">📂</div>
+            <h3>Empty Directory</h3>
+            <p>This directory doesn't contain any files or folders.</p>
+        </div>
+    {{end}}
+</div>
+        </main>
+
+        <footer class="footer">
+            <p>&copy; 2024 Media Server. Built with Go.</p>
+        </footer>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+</body>
+</html>

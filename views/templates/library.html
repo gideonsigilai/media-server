@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}}</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="/static/css/library.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
+</head>
+<body>
+    <div class="library-container">
+        <header class="library-header">
+            <div class="library-nav">
+                <a href="/" class="nav-link">
+                    <span class="nav-icon">🏠</span>
+                    Browse
+                </a>
+                <a href="/library" class="nav-link active">
+                    <span class="nav-icon">📚</span>
+                    Library
+                </a>
+            </div>
+            <div class="library-controls">
+                <div class="search-container">
+                    <input type="text" id="search-input" placeholder="Search media..." class="search-input">
+                    <button class="search-btn">🔍</button>
+                </div>
+                <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
+                    <span class="theme-icon">🌙</span>
+                </button>
+            </div>
+        </header>
+
+        <main class="library-main">
+            <div class="library-tabs">
+                <button class="tab-btn active" data-tab="videos">
+                    <span class="tab-icon">🎬</span>
+                    Videos ({{len .Videos}})
+                </button>
+                <button class="tab-btn" data-tab="audios">
+                    <span class="tab-icon">🎵</span>
+                    Music ({{len .Audios}})
+                </button>
+                <button class="tab-btn" data-tab="images">
+                    <span class="tab-icon">🖼️</span>
+                    Photos ({{len .Images}})
+                </button>
+            </div>
+
+            <div class="tab-content active" id="videos-tab">
+                <div class="section-header">
+                    <h2>Video Library</h2>
+                    <div class="view-controls">
+                        <button class="view-btn active" data-view="grid">⊞</button>
+                        <button class="view-btn" data-view="list">☰</button>
+                    </div>
+                </div>
+                <div class="media-grid" id="videos-grid">
+                    {{range .Videos}}
+                        <div class="media-card" data-title="{{.Name}}" data-type="video">
+                            <a href="/player/{{.Path}}" class="media-link">
+                                <div class="media-thumbnail">
+                                    <div class="media-icon">🎬</div>
+                                    <div class="media-overlay">
+                                        <div class="play-button">▶</div>
+                                    </div>
+                                    <div class="media-duration">{{.Extension}}</div>
+                                </div>
+                                <div class="media-info">
+                                    <h3 class="media-title">{{.Name}}</h3>
+                                    <div class="media-meta">
+                                        <span class="media-size">{{formatFileSize .Size}}</span>
+                                        <span class="media-path">{{.Path}}</span>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    {{end}}
+                </div>
+            </div>
+
+            <div class="tab-content" id="audios-tab">
+                <div class="section-header">
+                    <h2>Music Library</h2>
+                    <div class="view-controls">
+                        <button class="view-btn active" data-view="grid">⊞</button>
+                        <button class="view-btn" data-view="list">☰</button>
+                    </div>
+                </div>
+                <div class="media-grid" id="audios-grid">
+                    {{range .Audios}}
+                        <div class="media-card" data-title="{{.Name}}" data-type="audio">
+                            <a href="/player/{{.Path}}" class="media-link">
+                                <div class="media-thumbnail">
+                                    <div class="media-icon">🎵</div>
+                                    <div class="media-overlay">
+                                        <div class="play-button">▶</div>
+                                    </div>
+                                    <div class="media-duration">{{.Extension}}</div>
+                                </div>
+                                <div class="media-info">
+                                    <h3 class="media-title">{{.Name}}</h3>
+                                    <div class="media-meta">
+                                        <span class="media-size">{{formatFileSize .Size}}</span>
+                                        <span class="media-path">{{.Path}}</span>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    {{end}}
+                </div>
+            </div>
+
+            <div class="tab-content" id="images-tab">
+                <div class="section-header">
+                    <h2>Photo Library</h2>
+                    <div class="view-controls">
+                        <button class="view-btn active" data-view="grid">⊞</button>
+                        <button class="view-btn" data-view="list">☰</button>
+                    </div>
+                </div>
+                <div class="media-grid" id="images-grid">
+                    {{range .Images}}
+                        <div class="media-card" data-title="{{.Name}}" data-type="image">
+                            <a href="/player/{{.Path}}" class="media-link">
+                                <div class="media-thumbnail">
+                                    <img src="/stream/{{.Path}}" alt="{{.Name}}" class="thumbnail-image" loading="lazy">
+                                    <div class="media-overlay">
+                                        <div class="view-button">👁</div>
+                                    </div>
+                                </div>
+                                <div class="media-info">
+                                    <h3 class="media-title">{{.Name}}</h3>
+                                    <div class="media-meta">
+                                        <span class="media-size">{{formatFileSize .Size}}</span>
+                                        <span class="media-path">{{.Path}}</span>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    {{end}}
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+    <script src="/static/js/library.js"></script>
+</body>
+</html>

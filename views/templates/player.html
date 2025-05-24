@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}}</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="/static/css/player.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
+</head>
+<body>
+    <div class="player-container">
+        <header class="player-header">
+            <div class="player-nav">
+                <a href="/" class="nav-link">
+                    <span class="nav-icon">🏠</span>
+                    Browse
+                </a>
+                <a href="/library" class="nav-link">
+                    <span class="nav-icon">📚</span>
+                    Library
+                </a>
+                <a href="/{{.ParentPath}}" class="nav-link">
+                    <span class="nav-icon">📁</span>
+                    Folder
+                </a>
+            </div>
+            <div class="player-controls-header">
+                <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
+                    <span class="theme-icon">🌙</span>
+                </button>
+                <button id="fullscreen-btn" class="fullscreen-btn" aria-label="Toggle fullscreen">
+                    <span class="fullscreen-icon">⛶</span>
+                </button>
+            </div>
+        </header>
+
+        <main class="player-main">
+            <div class="video-section">
+                <div class="video-container" id="video-container">
+                    {{if eq .CurrentFile.GetMediaType "video"}}
+                        <video id="main-player" controls preload="metadata" crossorigin="anonymous" autoplay>
+                            <source src="{{.StreamURL}}">
+                            Your browser does not support the video tag.
+                        </video>
+                    {{else if eq .CurrentFile.GetMediaType "audio"}}
+                        <audio id="main-player" controls preload="metadata" crossorigin="anonymous" autoplay>
+                            <source src="{{.StreamURL}}">
+                            Your browser does not support the audio tag.
+                        </audio>
+                    {{else if eq .CurrentFile.GetMediaType "image"}}
+                        <div class="image-viewer">
+                            <img id="main-player" src="{{.StreamURL}}" alt="{{.CurrentFile.Name}}" />
+                        </div>
+                    {{end}}
+
+                    <!-- Media info overlay - only shows on hover and doesn't obstruct controls -->
+                    <div class="media-info-overlay" id="media-info-overlay">
+                        <div class="media-info">
+                            <h1 class="media-title">{{.CurrentFile.Name}}</h1>
+                            <div class="media-meta">
+                                <span class="media-size">{{formatFileSize .CurrentFile.Size}}</span>
+                                <span class="media-type">{{.CurrentFile.Extension}}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{if .Playlist}}
+            <aside class="playlist-section">
+                <div class="playlist-header">
+                    <h3>Playlist</h3>
+                    <span class="playlist-count">{{len .Playlist}} items</span>
+                </div>
+                <div class="playlist-content">
+                    {{range .Playlist}}
+                        <div class="playlist-item {{if eq .Path $.CurrentFile.Path}}active{{end}}"
+                             data-src="/stream/{{.Path}}"
+                             data-title="{{.Name}}"
+                             data-player-url="/player/{{.Path}}">
+                            <div class="playlist-thumbnail">
+                                <div class="playlist-icon">
+                                    {{if eq .GetMediaType "video"}}🎬{{else if eq .GetMediaType "audio"}}🎵{{else}}🖼️{{end}}
+                                </div>
+                            </div>
+                            <div class="playlist-info">
+                                <div class="playlist-title">{{.Name}}</div>
+                                <div class="playlist-meta">
+                                    <span class="playlist-size">{{formatFileSize .Size}}</span>
+                                    <span class="playlist-type">{{.Extension}}</span>
+                                </div>
+                            </div>
+                        </div>
+                    {{end}}
+                </div>
+            </aside>
+            {{end}}
+        </main>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+    <script src="/static/js/player.js"></script>
+</body>
+</html>

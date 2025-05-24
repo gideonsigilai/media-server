@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}}</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 class="header-title">
+                <span class="header-icon">🎬</span>
+                Media Server
+            </h1>
+            <div class="header-actions">
+                <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
+                    <span class="theme-icon">🌙</span>
+                </button>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="error-page">
+                <div class="error-icon">⚠️</div>
+                <h2 class="error-title">{{.ErrorTitle}}</h2>
+                <p class="error-message">{{.ErrorMessage}}</p>
+                <div class="error-actions">
+                    <a href="/" class="btn btn-primary">Go Home</a>
+                    <button onclick="history.back()" class="btn btn-secondary">Go Back</button>
+                </div>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p>&copy; 2024 Media Server. Built with Go.</p>
+        </footer>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+</body>
+</html>

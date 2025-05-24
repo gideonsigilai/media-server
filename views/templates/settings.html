@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}}</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="/static/css/settings.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
+</head>
+<body>
+    <div class="settings-container">
+        <header class="settings-header">
+            <div class="settings-nav">
+                <a href="/" class="nav-link">
+                    <span class="nav-icon">🏠</span>
+                    Browse
+                </a>
+                <a href="/library" class="nav-link">
+                    <span class="nav-icon">📚</span>
+                    Library
+                </a>
+                <a href="/settings" class="nav-link active">
+                    <span class="nav-icon">⚙️</span>
+                    Settings
+                </a>
+            </div>
+            <div class="settings-controls">
+                <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
+                    <span class="theme-icon">🌙</span>
+                </button>
+            </div>
+        </header>
+
+        <main class="settings-main">
+            <div class="settings-content">
+                <h1>Media Server Settings</h1>
+                
+                {{if .Message}}
+                    <div class="alert alert-success">{{.Message}}</div>
+                {{end}}
+
+                <div class="settings-section">
+                    <h2>Media Directory</h2>
+                    <p>Choose the folder where your media files are stored.</p>
+                    
+                    <form method="POST" class="directory-form">
+                        <div class="form-group">
+                            <label for="media_dir">Current Media Directory:</label>
+                            <div class="directory-input-group">
+                                <input type="text" id="media_dir" name="media_dir" value="{{.CurrentDir}}" class="directory-input" readonly>
+                                <button type="button" id="browse-btn" class="browse-btn">Browse</button>
+                            </div>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Update Directory</button>
+                            <button type="button" id="refresh-btn" class="btn btn-secondary">Refresh</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="settings-section">
+                    <h2>Upload Media Files</h2>
+                    <p>Upload new media files to your library.</p>
+                    
+                    <form action="/upload" method="POST" enctype="multipart/form-data" class="upload-form">
+                        <div class="upload-area" id="upload-area">
+                            <div class="upload-icon">📁</div>
+                            <div class="upload-text">
+                                <p>Drag and drop files here or click to browse</p>
+                                <p class="upload-hint">Supported formats: MP4, MKV, AVI, MP3, WAV, JPG, PNG, etc.</p>
+                            </div>
+                            <input type="file" id="file-input" name="files" multiple accept="video/*,audio/*,image/*" class="file-input">
+                        </div>
+                        
+                        <div class="file-list" id="file-list"></div>
+                        
+                        <div class="upload-actions">
+                            <button type="submit" class="btn btn-primary" id="upload-btn" disabled>Upload Files</button>
+                            <button type="button" id="clear-btn" class="btn btn-secondary">Clear</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="settings-section">
+                    <h2>Quick Access</h2>
+                    <div class="quick-drives">
+                        {{range .Drives}}
+                            <button class="drive-btn" data-path="{{.}}">💾 {{.}}</button>
+                        {{end}}
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Folder Browser Modal -->
+        <div class="modal" id="folder-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Select Media Directory</h3>
+                    <button class="modal-close" id="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="current-path">
+                        <span>Current: </span>
+                        <span id="current-path-display">C:\</span>
+                    </div>
+                    <div class="folder-browser" id="folder-browser">
+                        <!-- Folders will be loaded here -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" id="select-folder">Select This Folder</button>
+                    <button class="btn btn-secondary" id="cancel-select">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+    <script src="/static/js/settings.js"></script>
+</body>
+</html>
