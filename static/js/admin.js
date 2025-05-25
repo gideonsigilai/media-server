@@ -20,6 +20,7 @@ class AdminDashboard {
         this.setupEventListeners();
         this.connectToRealtimeStream();
         this.loadInitialData();
+        this.setupMediaFolderHandlers();
     }
 
     setupEventListeners() {
@@ -741,6 +742,11 @@ class AdminDashboard {
         if (selectedButton) {
             selectedButton.classList.add('active');
         }
+
+        // Load data for specific tabs
+        if (tabName === 'media-folders') {
+            this.loadMediaFolders();
+        }
     }
 
     showNotification(message, type = 'info') {
@@ -880,6 +886,246 @@ class AdminDashboard {
 
         console.log('AdminDashboard cleaned up');
     }
+
+    // Media Folder Management Methods
+    setupMediaFolderHandlers() {
+        // Setup form submission handler
+        const addFolderForm = document.getElementById('addFolderForm');
+        if (addFolderForm) {
+            addFolderForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.addMediaFolder();
+            });
+        }
+    }
+
+    async loadMediaFolders() {
+        try {
+            const response = await fetch('/admin/api/media-folders');
+            if (!response.ok) throw new Error('Failed to load media folders');
+
+            const folders = await response.json();
+            this.displayMediaFolders(folders);
+        } catch (error) {
+            console.error('Error loading media folders:', error);
+            this.showNotification('Failed to load media folders', 'error');
+        }
+    }
+
+    displayMediaFolders(folders) {
+        const container = document.getElementById('media-folders-container');
+        if (!container) return;
+
+        if (!folders || folders.length === 0) {
+            container.innerHTML = '<div class="loading-message">No media folders configured. Add a folder to get started.</div>';
+            return;
+        }
+
+        const foldersHtml = folders.map(folder => `
+            <div class="folder-card ${folder.is_default ? 'default' : ''}">
+                <div class="folder-header">
+                    <h4 class="folder-title">${this.escapeHtml(folder.name)}</h4>
+                    <div class="folder-badges">
+                        ${folder.is_default ? '<span class="folder-badge default">Default</span>' : ''}
+                        <span class="folder-badge ${folder.is_active ? 'active' : 'inactive'}">
+                            ${folder.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="folder-path">${this.escapeHtml(folder.path)}</div>
+
+                ${folder.description ? `<div class="folder-description">${this.escapeHtml(folder.description)}</div>` : ''}
+
+                <div class="folder-stats">
+                    <div class="folder-stat">
+                        <div class="folder-stat-value">${folder.file_count || 0}</div>
+                        <div class="folder-stat-label">Files</div>
+                    </div>
+                    <div class="folder-stat">
+                        <div class="folder-stat-value">${this.formatBytes(folder.total_size || 0)}</div>
+                        <div class="folder-stat-label">Size</div>
+                    </div>
+                </div>
+
+                <div class="folder-actions">
+                    <button class="btn btn-primary" onclick="scanFolder('${folder.id}')">🔍 Scan</button>
+                    <button class="btn btn-secondary" onclick="toggleFolder('${folder.id}')">${folder.is_active ? '⏸️ Disable' : '▶️ Enable'}</button>
+                    ${!folder.is_default ? `<button class="btn btn-secondary" onclick="setDefaultFolder('${folder.id}')">⭐ Set Default</button>` : ''}
+                    <button class="btn btn-danger" onclick="removeFolder('${folder.id}')">🗑️ Remove</button>
+                </div>
+            </div>
+        `).join('');
+
+        container.innerHTML = foldersHtml;
+    }
+
+    async addMediaFolder() {
+        const name = document.getElementById('folderName').value;
+        const path = document.getElementById('folderPath').value;
+        const description = document.getElementById('folderDescription').value;
+        const setDefault = document.getElementById('setAsDefault').checked;
+
+        if (!name || !path) {
+            this.showNotification('Name and path are required', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch('/admin/api/media-folders', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: name,
+                    path: path,
+                    description: description,
+                    set_default: setDefault
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.text();
+                throw new Error(error);
+            }
+
+            const folder = await response.json();
+            this.showNotification(`Media folder "${folder.name}" added successfully`, 'success');
+
+            // Close modal and refresh folders
+            closeModal('addFolderModal');
+            this.loadMediaFolders();
+
+            // Clear form
+            document.getElementById('addFolderForm').reset();
+        } catch (error) {
+            console.error('Error adding media folder:', error);
+            this.showNotification('Failed to add media folder: ' + error.message, 'error');
+        }
+    }
+
+    async browseFolders(path = '/') {
+        try {
+            const response = await fetch(`/admin/api/browse-folders?path=${encodeURIComponent(path)}`);
+            if (!response.ok) throw new Error('Failed to browse folders');
+
+            const folders = await response.json();
+            this.displayFolderBrowser(folders, path);
+        } catch (error) {
+            console.error('Error browsing folders:', error);
+            this.showNotification('Failed to browse folders', 'error');
+        }
+    }
+
+    displayFolderBrowser(folders, currentPath) {
+        const folderList = document.getElementById('folderList');
+        const currentPathElement = document.getElementById('currentPath');
+
+        if (currentPathElement) {
+            currentPathElement.textContent = currentPath;
+        }
+
+        if (!folderList) return;
+
+        const foldersHtml = folders.map(folder => `
+            <div class="folder-list-item" onclick="navigateToFolder('${this.escapeHtml(folder.full_path)}')">
+                <span class="folder-icon">📁</span>
+                <span>${this.escapeHtml(folder.name)}</span>
+            </div>
+        `).join('');
+
+        folderList.innerHTML = foldersHtml;
+
+        // Store current path for selection
+        this.currentBrowsePath = currentPath;
+    }
+
+    selectCurrentPath() {
+        if (this.currentBrowsePath) {
+            document.getElementById('folderPath').value = this.currentBrowsePath;
+            closeModal('folderBrowserModal');
+        }
+    }
+
+    async scanFolder(folderId) {
+        try {
+            this.showNotification('Scanning folder...', 'info');
+
+            const response = await fetch(`/admin/api/scan-folder?id=${folderId}`, {
+                method: 'POST'
+            });
+
+            if (!response.ok) throw new Error('Failed to scan folder');
+
+            const stats = await response.json();
+            this.showNotification(`Scan complete: ${stats.total_files} files found`, 'success');
+
+            // Refresh folders to show updated stats
+            this.loadMediaFolders();
+        } catch (error) {
+            console.error('Error scanning folder:', error);
+            this.showNotification('Failed to scan folder: ' + error.message, 'error');
+        }
+    }
+
+    async toggleFolder(folderId) {
+        try {
+            const response = await fetch(`/admin/api/media-folder?id=${folderId}&action=toggle`, {
+                method: 'PATCH'
+            });
+
+            if (!response.ok) throw new Error('Failed to toggle folder');
+
+            this.showNotification('Folder status updated', 'success');
+            this.loadMediaFolders();
+        } catch (error) {
+            console.error('Error toggling folder:', error);
+            this.showNotification('Failed to toggle folder: ' + error.message, 'error');
+        }
+    }
+
+    async setDefaultFolder(folderId) {
+        try {
+            const response = await fetch(`/admin/api/media-folder?id=${folderId}&action=set_default`, {
+                method: 'PATCH'
+            });
+
+            if (!response.ok) throw new Error('Failed to set default folder');
+
+            this.showNotification('Default folder updated', 'success');
+            this.loadMediaFolders();
+        } catch (error) {
+            console.error('Error setting default folder:', error);
+            this.showNotification('Failed to set default folder: ' + error.message, 'error');
+        }
+    }
+
+    async removeFolder(folderId) {
+        if (!confirm('Are you sure you want to remove this media folder? This will not delete the actual files.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/admin/api/media-folder?id=${folderId}`, {
+                method: 'DELETE'
+            });
+
+            if (!response.ok) throw new Error('Failed to remove folder');
+
+            this.showNotification('Media folder removed', 'success');
+            this.loadMediaFolders();
+        } catch (error) {
+            console.error('Error removing folder:', error);
+            this.showNotification('Failed to remove folder: ' + error.message, 'error');
+        }
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
 }
 
 // Global functions for template onclick handlers
@@ -999,6 +1245,60 @@ function removeUser(ipAddress, name) {
         form.appendChild(input);
         document.body.appendChild(form);
         form.submit();
+    }
+}
+
+// Media folder management functions
+function showAddFolderModal() {
+    const modal = document.getElementById('addFolderModal');
+    if (modal) {
+        modal.style.display = 'block';
+    }
+}
+
+function browseFolders() {
+    if (window.adminDashboard) {
+        window.adminDashboard.browseFolders();
+        const modal = document.getElementById('folderBrowserModal');
+        if (modal) {
+            modal.style.display = 'block';
+        }
+    }
+}
+
+function navigateToFolder(path) {
+    if (window.adminDashboard) {
+        window.adminDashboard.browseFolders(path);
+    }
+}
+
+function selectCurrentPath() {
+    if (window.adminDashboard) {
+        window.adminDashboard.selectCurrentPath();
+    }
+}
+
+function scanFolder(folderId) {
+    if (window.adminDashboard) {
+        window.adminDashboard.scanFolder(folderId);
+    }
+}
+
+function toggleFolder(folderId) {
+    if (window.adminDashboard) {
+        window.adminDashboard.toggleFolder(folderId);
+    }
+}
+
+function setDefaultFolder(folderId) {
+    if (window.adminDashboard) {
+        window.adminDashboard.setDefaultFolder(folderId);
+    }
+}
+
+function removeFolder(folderId) {
+    if (window.adminDashboard) {
+        window.adminDashboard.removeFolder(folderId);
     }
 }
 

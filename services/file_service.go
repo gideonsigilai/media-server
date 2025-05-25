@@ -16,6 +16,7 @@ type FileService struct {
 	baseDir            string
 	cacheService       *CacheService
 	performanceService *PerformanceService
+	mediaFolderService *MediaFolderService
 	workerPool         *WorkerPool
 }
 
@@ -32,6 +33,25 @@ func NewFileServiceWithCache(baseDir string, cacheService *CacheService, perform
 		baseDir:            baseDir,
 		cacheService:       cacheService,
 		performanceService: performanceService,
+	}
+
+	// Create worker pool for file operations
+	if performanceService != nil {
+		fs.workerPool = performanceService.GetOrCreateWorkerPool("file-operations",
+			performanceService.GetIOOptimalWorkerCount(), 100)
+	}
+
+	return fs
+}
+
+// NewFileServiceWithMediaFolders creates a new FileService instance with media folder support
+func NewFileServiceWithMediaFolders(baseDir string, cacheService *CacheService,
+	performanceService *PerformanceService, mediaFolderService *MediaFolderService) *FileService {
+	fs := &FileService{
+		baseDir:            baseDir,
+		cacheService:       cacheService,
+		performanceService: performanceService,
+		mediaFolderService: mediaFolderService,
 	}
 
 	// Create worker pool for file operations
@@ -242,6 +262,26 @@ func (fs *FileService) GetFileInfo(requestPath string) (*models.FileInfo, error)
 	}
 
 	return result, nil
+}
+
+// ResolveMediaPath resolves a media path using the media folder service
+func (fs *FileService) ResolveMediaPath(requestPath string) (string, error) {
+	// Sanitize the path
+	cleanPath := utils.SanitizePath(requestPath)
+
+	// If media folder service is available, use it to resolve the path
+	if fs.mediaFolderService != nil {
+		fullPath, _, err := fs.mediaFolderService.ResolvePath(cleanPath)
+		return fullPath, err
+	}
+
+	// Fallback to base directory
+	if !utils.IsValidPath(cleanPath, fs.baseDir) {
+		return "", fmt.Errorf("access denied: invalid path")
+	}
+
+	fullPath := filepath.Join(fs.baseDir, cleanPath)
+	return fullPath, nil
 }
 
 // ValidateFilePath validates that a file path is safe and accessible

@@ -33,6 +33,10 @@ func main() {
 	log.Println("Initializing cache service...")
 	cacheService := services.NewCacheService()
 
+	// Initialize media folder service
+	log.Println("Initializing media folder service...")
+	mediaFolderService := services.NewMediaFolderService(cfg.MediaDir)
+
 	// Initialize admin service with performance monitoring
 	log.Println("Initializing admin service...")
 	adminService := services.NewAdminService()
@@ -44,7 +48,7 @@ func main() {
 
 	// Setup routes with enhanced services
 	log.Println("Setting up routes...")
-	handlers.SetupRoutes(mux, cfg, adminService, cacheService, performanceService)
+	handlers.SetupRoutes(mux, cfg, adminService, cacheService, performanceService, mediaFolderService)
 
 	// Apply middleware (logging and security)
 	handler := middleware.Logging(middleware.Security(mux))
@@ -68,7 +72,7 @@ func main() {
 	go func() {
 		// Get the admin handler from routes to start broadcasting
 		// We need to create a temporary admin handler to start broadcasting
-		tempAdminHandler := handlers.NewAdminHandlerWithServices(cfg, adminService, cacheService, performanceService)
+		tempAdminHandler := handlers.NewAdminHandlerWithServices(cfg, adminService, cacheService, performanceService, mediaFolderService)
 		tempAdminHandler.StartRealtimeBroadcast()
 	}()
 

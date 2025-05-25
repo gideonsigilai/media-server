@@ -84,10 +84,10 @@ func NewFileHandler(cfg *config.Config) *FileHandler {
 
 // NewFileHandlerWithServices creates a new FileHandler instance with enhanced services
 func NewFileHandlerWithServices(cfg *config.Config, cacheService *services.CacheService,
-	performanceService *services.PerformanceService) *FileHandler {
+	performanceService *services.PerformanceService, mediaFolderService *services.MediaFolderService) *FileHandler {
 
 	log.Println("Creating FileHandler with enhanced services...")
-	fileService := services.NewFileServiceWithCache(cfg.MediaDir, cacheService, performanceService)
+	fileService := services.NewFileServiceWithMediaFolders(cfg.MediaDir, cacheService, performanceService, mediaFolderService)
 
 	// Load templates with custom functions
 	funcMap := template.FuncMap{

@@ -81,9 +81,9 @@ func NewPlayerHandler(cfg *config.Config) *PlayerHandler {
 
 // NewPlayerHandlerWithServices creates a new PlayerHandler instance with enhanced services
 func NewPlayerHandlerWithServices(cfg *config.Config, cacheService *services.CacheService,
-	performanceService *services.PerformanceService) *PlayerHandler {
+	performanceService *services.PerformanceService, mediaFolderService *services.MediaFolderService) *PlayerHandler {
 
-	fileService := services.NewFileServiceWithCache(cfg.MediaDir, cacheService, performanceService)
+	fileService := services.NewFileServiceWithMediaFolders(cfg.MediaDir, cacheService, performanceService, mediaFolderService)
 
 	// Load templates with custom functions
 	funcMap := template.FuncMap{

@@ -40,9 +40,10 @@ func NewStreamHandler(cfg *config.Config) *StreamHandler {
 
 // NewStreamHandlerWithServices creates a new StreamHandler instance with enhanced services
 func NewStreamHandlerWithServices(cfg *config.Config, adminService *services.AdminService,
-	cacheService *services.CacheService, performanceService *services.PerformanceService) *StreamHandler {
+	cacheService *services.CacheService, performanceService *services.PerformanceService,
+	mediaFolderService *services.MediaFolderService) *StreamHandler {
 
-	fileService := services.NewFileServiceWithCache(cfg.MediaDir, cacheService, performanceService)
+	fileService := services.NewFileServiceWithMediaFolders(cfg.MediaDir, cacheService, performanceService, mediaFolderService)
 	fileServer := http.FileServer(http.Dir(cfg.MediaDir))
 
 	return &StreamHandler{

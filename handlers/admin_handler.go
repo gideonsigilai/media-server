@@ -27,6 +27,7 @@ type AdminHandler struct {
 	adminService       *services.AdminService
 	cacheService       *services.CacheService
 	performanceService *services.PerformanceService
+	mediaFolderService *services.MediaFolderService
 	sseClients         map[string]chan []byte
 	sseClientsMutex    sync.RWMutex
 }
@@ -92,7 +93,8 @@ func NewAdminHandler(cfg *config.Config, adminService *services.AdminService) *A
 
 // NewAdminHandlerWithServices creates a new AdminHandler instance with enhanced services
 func NewAdminHandlerWithServices(cfg *config.Config, adminService *services.AdminService,
-	cacheService *services.CacheService, performanceService *services.PerformanceService) *AdminHandler {
+	cacheService *services.CacheService, performanceService *services.PerformanceService,
+	mediaFolderService *services.MediaFolderService) *AdminHandler {
 
 	// Load templates with custom functions
 	funcMap := template.FuncMap{
@@ -148,6 +150,7 @@ func NewAdminHandlerWithServices(cfg *config.Config, adminService *services.Admi
 		adminService:       adminService,
 		cacheService:       cacheService,
 		performanceService: performanceService,
+		mediaFolderService: mediaFolderService,
 		sseClients:         make(map[string]chan []byte),
 		sseClientsMutex:    sync.RWMutex{},
 	}
@@ -825,4 +828,190 @@ func (ah *AdminHandler) GetConnectedClientsCount() int {
 	ah.sseClientsMutex.RLock()
 	defer ah.sseClientsMutex.RUnlock()
 	return len(ah.sseClients)
+}
+
+// HandleMediaFoldersAPI provides JSON API for media folders
+func (ah *AdminHandler) HandleMediaFoldersAPI(w http.ResponseWriter, r *http.Request) {
+	if ah.mediaFolderService == nil {
+		http.Error(w, "Media folder service not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		folders := ah.mediaFolderService.GetAllFolders()
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(folders); err != nil {
+			log.Printf("Error encoding media folders JSON: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
+
+	case http.MethodPost:
+		var req models.MediaFolderRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			return
+		}
+
+		// Get admin info from context
+		adminIP := r.Context().Value("admin_ip").(string)
+
+		folder, err := ah.mediaFolderService.AddFolder(&req, adminIP)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(folder)
+
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+// HandleMediaFolderAPI handles individual media folder operations
+func (ah *AdminHandler) HandleMediaFolderAPI(w http.ResponseWriter, r *http.Request) {
+	if ah.mediaFolderService == nil {
+		http.Error(w, "Media folder service not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	// Extract folder ID from URL path
+	folderID := r.URL.Query().Get("id")
+	if folderID == "" {
+		http.Error(w, "Folder ID required", http.StatusBadRequest)
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		folder, err := ah.mediaFolderService.GetFolder(folderID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(folder)
+
+	case http.MethodDelete:
+		if err := ah.mediaFolderService.RemoveFolder(folderID); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+
+	case http.MethodPatch:
+		action := r.URL.Query().Get("action")
+		switch action {
+		case "toggle":
+			if err := ah.mediaFolderService.ToggleFolderActive(folderID); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+		case "set_default":
+			if err := ah.mediaFolderService.SetDefaultFolder(folderID); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+		default:
+			http.Error(w, "Invalid action", http.StatusBadRequest)
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+// HandleScanFolderAPI handles folder scanning operations
+func (ah *AdminHandler) HandleScanFolderAPI(w http.ResponseWriter, r *http.Request) {
+	if ah.mediaFolderService == nil {
+		http.Error(w, "Media folder service not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	folderID := r.URL.Query().Get("id")
+	if folderID == "" {
+		// Scan all folders
+		results := ah.mediaFolderService.ScanAllFolders()
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(results)
+		return
+	}
+
+	// Scan specific folder
+	stats, err := ah.mediaFolderService.ScanFolder(folderID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(stats)
+}
+
+// HandleBrowseFoldersAPI provides folder browsing for admin
+func (ah *AdminHandler) HandleBrowseFoldersAPI(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	path := r.URL.Query().Get("path")
+	if path == "" {
+		path = "/"
+	}
+
+	// List directories only (for security)
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		http.Error(w, "Cannot read directory", http.StatusBadRequest)
+		return
+	}
+
+	type FolderInfo struct {
+		Name     string `json:"name"`
+		Path     string `json:"path"`
+		IsDir    bool   `json:"is_dir"`
+		FullPath string `json:"full_path"`
+	}
+
+	folders := make([]FolderInfo, 0)
+
+	// Add parent directory if not at root
+	if path != "/" && path != "" {
+		parent := filepath.Dir(path)
+		folders = append(folders, FolderInfo{
+			Name:     "..",
+			Path:     parent,
+			IsDir:    true,
+			FullPath: parent,
+		})
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			fullPath := filepath.Join(path, entry.Name())
+			folders = append(folders, FolderInfo{
+				Name:     entry.Name(),
+				Path:     entry.Name(),
+				IsDir:    true,
+				FullPath: fullPath,
+			})
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(folders)
 }

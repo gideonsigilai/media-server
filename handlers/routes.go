@@ -9,12 +9,13 @@ import (
 
 // SetupRoutes configures all application routes
 func SetupRoutes(mux *http.ServeMux, cfg *config.Config, adminService *services.AdminService,
-	cacheService *services.CacheService, performanceService *services.PerformanceService) {
+	cacheService *services.CacheService, performanceService *services.PerformanceService,
+	mediaFolderService *services.MediaFolderService) {
 	// Create handlers with enhanced services
-	fileHandler := NewFileHandlerWithServices(cfg, cacheService, performanceService)
-	streamHandler := NewStreamHandlerWithServices(cfg, adminService, cacheService, performanceService)
-	playerHandler := NewPlayerHandlerWithServices(cfg, cacheService, performanceService)
-	adminHandler := NewAdminHandlerWithServices(cfg, adminService, cacheService, performanceService)
+	fileHandler := NewFileHandlerWithServices(cfg, cacheService, performanceService, mediaFolderService)
+	streamHandler := NewStreamHandlerWithServices(cfg, adminService, cacheService, performanceService, mediaFolderService)
+	playerHandler := NewPlayerHandlerWithServices(cfg, cacheService, performanceService, mediaFolderService)
+	adminHandler := NewAdminHandlerWithServices(cfg, adminService, cacheService, performanceService, mediaFolderService)
 
 	// Create admin middleware
 	adminMiddleware := middleware.NewAdminMiddleware(adminService)
@@ -41,6 +42,12 @@ func SetupRoutes(mux *http.ServeMux, cfg *config.Config, adminService *services.
 	mux.Handle("/admin/api/cache", adminMiddleware.AdminAuth(http.HandlerFunc(adminHandler.HandleCacheAPI)))
 	mux.Handle("/admin/api/worker-pools", adminMiddleware.AdminAuth(http.HandlerFunc(adminHandler.HandleWorkerPoolsAPI)))
 	mux.Handle("/admin/api/realtime", adminMiddleware.AdminAuth(http.HandlerFunc(adminHandler.HandleRealtimeSSE)))
+
+	// Media folder management API routes (admin only)
+	mux.Handle("/admin/api/media-folders", adminMiddleware.AdminAuth(http.HandlerFunc(adminHandler.HandleMediaFoldersAPI)))
+	mux.Handle("/admin/api/media-folder", adminMiddleware.AdminAuth(http.HandlerFunc(adminHandler.HandleMediaFolderAPI)))
+	mux.Handle("/admin/api/scan-folder", adminMiddleware.AdminAuth(http.HandlerFunc(adminHandler.HandleScanFolderAPI)))
+	mux.Handle("/admin/api/browse-folders", adminMiddleware.AdminAuth(http.HandlerFunc(adminHandler.HandleBrowseFoldersAPI)))
 
 	// Admin/Settings interface (protected by admin auth)
 	mux.Handle("/settings", adminMiddleware.AdminAuth(http.HandlerFunc(adminHandler.HandleSettings)))
