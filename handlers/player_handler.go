@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"html/template"
 	"log"
 	"media-server/config"
@@ -8,13 +9,16 @@ import (
 	"media-server/services"
 	"media-server/utils"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
 // PlayerHandler handles video player interface
 type PlayerHandler struct {
-	fileService *services.FileService
-	templates   *template.Template
+	fileService        *services.FileService
+	templates          *template.Template
+	cacheService       *services.CacheService
+	performanceService *services.PerformanceService
 }
 
 // NewPlayerHandler creates a new PlayerHandler instance
@@ -27,6 +31,41 @@ func NewPlayerHandler(cfg *config.Config) *PlayerHandler {
 		"joinPath":       utils.JoinPath,
 		"formatFileSize": utils.FormatFileSize,
 		"trimPrefix":     strings.TrimPrefix,
+		"div": func(a, b interface{}) float64 {
+			var aFloat, bFloat float64
+
+			switch v := a.(type) {
+			case int64:
+				aFloat = float64(v)
+			case int:
+				aFloat = float64(v)
+			case float64:
+				aFloat = v
+			case string:
+				if parsed, err := strconv.ParseFloat(v, 64); err == nil {
+					aFloat = parsed
+				}
+			}
+
+			switch v := b.(type) {
+			case int64:
+				bFloat = float64(v)
+			case int:
+				bFloat = float64(v)
+			case float64:
+				bFloat = v
+			case string:
+				if parsed, err := strconv.ParseFloat(v, 64); err == nil {
+					bFloat = parsed
+				}
+			}
+
+			if bFloat == 0 {
+				return 0
+			}
+			return aFloat / bFloat
+		},
+		"printf": fmt.Sprintf,
 	}
 
 	templates, err := template.New("").Funcs(funcMap).ParseGlob("views/templates/*.html")
@@ -37,6 +76,68 @@ func NewPlayerHandler(cfg *config.Config) *PlayerHandler {
 	return &PlayerHandler{
 		fileService: fileService,
 		templates:   templates,
+	}
+}
+
+// NewPlayerHandlerWithServices creates a new PlayerHandler instance with enhanced services
+func NewPlayerHandlerWithServices(cfg *config.Config, cacheService *services.CacheService,
+	performanceService *services.PerformanceService) *PlayerHandler {
+
+	fileService := services.NewFileServiceWithCache(cfg.MediaDir, cacheService, performanceService)
+
+	// Load templates with custom functions
+	funcMap := template.FuncMap{
+		"splitPath":      utils.SplitPath,
+		"joinPath":       utils.JoinPath,
+		"formatFileSize": utils.FormatFileSize,
+		"trimPrefix":     strings.TrimPrefix,
+		"div": func(a, b interface{}) float64 {
+			var aFloat, bFloat float64
+
+			switch v := a.(type) {
+			case int64:
+				aFloat = float64(v)
+			case int:
+				aFloat = float64(v)
+			case float64:
+				aFloat = v
+			case string:
+				if parsed, err := strconv.ParseFloat(v, 64); err == nil {
+					aFloat = parsed
+				}
+			}
+
+			switch v := b.(type) {
+			case int64:
+				bFloat = float64(v)
+			case int:
+				bFloat = float64(v)
+			case float64:
+				bFloat = v
+			case string:
+				if parsed, err := strconv.ParseFloat(v, 64); err == nil {
+					bFloat = parsed
+				}
+			}
+
+			if bFloat == 0 {
+				return 0
+			}
+			return aFloat / bFloat
+		},
+		"printf": fmt.Sprintf,
+	}
+
+	templates, err := template.New("").Funcs(funcMap).ParseGlob("views/templates/*.html")
+	if err != nil {
+		log.Fatalf("Error loading templates: %v", err)
+	}
+
+	return &PlayerHandler{
+		fileService:        fileService,
+		templates:          templates,
+		cacheService:       cacheService,
+		performanceService: performanceService,
 	}
 }
 

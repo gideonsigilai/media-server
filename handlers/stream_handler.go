@@ -12,12 +12,18 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 )
 
-// StreamHandler handles file streaming
+// StreamHandler handles file streaming with optimized performance
 type StreamHandler struct {
-	fileService *services.FileService
-	fileServer  http.Handler
+	fileService        *services.FileService
+	fileServer         http.Handler
+	adminService       *services.AdminService
+	cacheService       *services.CacheService
+	performanceService *services.PerformanceService
+	bufferPool         *sync.Pool
 }
 
 // NewStreamHandler creates a new StreamHandler instance
@@ -28,6 +34,34 @@ func NewStreamHandler(cfg *config.Config) *StreamHandler {
 	return &StreamHandler{
 		fileService: fileService,
 		fileServer:  fileServer,
+		bufferPool:  createBufferPool(),
+	}
+}
+
+// NewStreamHandlerWithServices creates a new StreamHandler instance with enhanced services
+func NewStreamHandlerWithServices(cfg *config.Config, adminService *services.AdminService,
+	cacheService *services.CacheService, performanceService *services.PerformanceService) *StreamHandler {
+
+	fileService := services.NewFileServiceWithCache(cfg.MediaDir, cacheService, performanceService)
+	fileServer := http.FileServer(http.Dir(cfg.MediaDir))
+
+	return &StreamHandler{
+		fileService:        fileService,
+		fileServer:         fileServer,
+		adminService:       adminService,
+		cacheService:       cacheService,
+		performanceService: performanceService,
+		bufferPool:         createBufferPool(),
+	}
+}
+
+// createBufferPool creates a pool of buffers for efficient streaming
+func createBufferPool() *sync.Pool {
+	return &sync.Pool{
+		New: func() interface{} {
+			// Create 64KB buffers for optimal streaming performance
+			return make([]byte, 64*1024)
+		},
 	}
 }
 
@@ -274,8 +308,8 @@ func (sh *StreamHandler) handleRangeRequest(w http.ResponseWriter, r *http.Reque
 	w.Header().Set("Content-Length", strconv.FormatInt(contentLength, 10))
 	w.WriteHeader(http.StatusPartialContent)
 
-	// Copy the requested range
-	written, err := io.CopyN(w, file, contentLength)
+	// Copy the requested range using optimized buffer
+	written, err := sh.copyNWithBuffer(w, file, contentLength)
 	if err != nil {
 		log.Printf("Error copying file range %s (wrote %d bytes): %v", filePath, written, err)
 	} else {
@@ -283,8 +317,15 @@ func (sh *StreamHandler) handleRangeRequest(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-// serveCompleteFile serves the complete file for non-range requests
+// serveCompleteFile serves the complete file for non-range requests with optimized streaming
 func (sh *StreamHandler) serveCompleteFile(w http.ResponseWriter, r *http.Request, filePath string) {
+	startTime := time.Now()
+
+	// Track streaming start
+	if sh.adminService != nil {
+		sh.adminService.StartStream()
+	}
+
 	// Open file
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -294,12 +335,39 @@ func (sh *StreamHandler) serveCompleteFile(w http.ResponseWriter, r *http.Reques
 	}
 	defer file.Close()
 
-	// Set status OK and copy file content
+	// Set status OK and copy file content using optimized buffer
 	w.WriteHeader(http.StatusOK)
-	written, err := io.Copy(w, file)
+	written, err := sh.copyWithBuffer(w, file)
+
+	// Track streaming end
+	duration := time.Since(startTime)
+	if sh.adminService != nil {
+		sh.adminService.EndStream(written, duration)
+	}
+
 	if err != nil {
 		log.Printf("Error copying file %s (wrote %d bytes): %v", filePath, written, err)
 	} else {
-		log.Printf("Successfully served complete file: %d bytes", written)
+		log.Printf("Successfully served complete file: %d bytes in %v", written, duration)
 	}
+}
+
+// copyWithBuffer copies data using a pooled buffer for better performance
+func (sh *StreamHandler) copyWithBuffer(dst io.Writer, src io.Reader) (int64, error) {
+	// Get buffer from pool
+	buffer := sh.bufferPool.Get().([]byte)
+	defer sh.bufferPool.Put(buffer)
+
+	return io.CopyBuffer(dst, src, buffer)
+}
+
+// copyNWithBuffer copies N bytes using a pooled buffer for better performance
+func (sh *StreamHandler) copyNWithBuffer(dst io.Writer, src io.Reader, n int64) (int64, error) {
+	// Get buffer from pool
+	buffer := sh.bufferPool.Get().([]byte)
+	defer sh.bufferPool.Put(buffer)
+
+	// Use a limited reader to ensure we don't read more than n bytes
+	limitedReader := io.LimitReader(src, n)
+	return io.CopyBuffer(dst, limitedReader, buffer)
 }

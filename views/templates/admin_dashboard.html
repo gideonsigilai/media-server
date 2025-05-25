@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}}</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="/static/css/admin.css">
+    <style>
+        .admin-dashboard {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: var(--accent-color);
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+        }
+
+        .dashboard-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tab-button {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .tab-button.active {
+            color: var(--accent-color);
+            border-bottom-color: var(--accent-color);
+        }
+
+        .tab-content {
+            display: none;
+            background: var(--card-bg);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            padding: 20px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .connections-table, .users-table, .activity-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .connections-table th, .users-table th, .activity-table th,
+        .connections-table td, .users-table td, .activity-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .connections-table th, .users-table th, .activity-table th {
+            background: var(--bg-secondary);
+            font-weight: 600;
+        }
+
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: 500;
+        }
+
+        .status-active {
+            background: #10b981;
+            color: white;
+        }
+
+        .status-blocked {
+            background: #ef4444;
+            color: white;
+        }
+
+        .status-local {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8em;
+            transition: all 0.3s ease;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-primary {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .btn:hover {
+            opacity: 0.8;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--input-bg);
+            color: var(--text-color);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            min-width: 400px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+
+        .refresh-btn {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+
+        .auto-refresh {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-secondary);
+            font-size: 0.9em;
+        }
+
+        .connection-status {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.9em;
+        }
+
+        .connection-status.connected {
+            background: #10b981;
+            color: white;
+        }
+
+        .connection-status.connecting {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .connection-status.disconnected {
+            background: #ef4444;
+            color: white;
+        }
+
+        .performance-card {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        .performance-card h4 {
+            margin: 0 0 15px 0;
+            color: var(--accent-color);
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .metric-row:last-child {
+            border-bottom: none;
+        }
+
+        .metric-row span:first-child {
+            color: var(--text-secondary);
+        }
+
+        .metric-row span:last-child {
+            font-weight: 500;
+            color: var(--text-color);
+        }
+
+        .worker-pool-card {
+            background: var(--bg-secondary);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .worker-pool-card h4 {
+            margin: 0 0 10px 0;
+            color: var(--accent-color);
+            font-size: 1em;
+        }
+
+        .pool-stats {
+            display: grid;
+            gap: 5px;
+        }
+
+        .pool-stats .stat {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9em;
+        }
+
+        .pool-stats .label {
+            color: var(--text-secondary);
+        }
+
+        .pool-stats .value {
+            font-weight: 500;
+        }
+
+        .status-running {
+            color: #10b981;
+        }
+
+        .status-stopping {
+            color: #f59e0b;
+        }
+
+        .status-stopped {
+            color: #ef4444;
+        }
+
+        .metric-value {
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+        }
+
+        .status-good {
+            color: #10b981;
+        }
+
+        .status-warning {
+            color: #f59e0b;
+        }
+
+        .status-critical {
+            color: #ef4444;
+        }
+
+        .performance-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .indicator-good {
+            background-color: #10b981;
+        }
+
+        .indicator-warning {
+            background-color: #f59e0b;
+        }
+
+        .indicator-critical {
+            background-color: #ef4444;
+        }
+
+        .real-time-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            background: #10b981;
+            color: white;
+            border-radius: 4px;
+            font-size: 0.7em;
+            font-weight: 500;
+            margin-left: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-dashboard">
+        <div class="dashboard-header">
+            <div>
+                <h1>{{.Title}}</h1>
+                <p>Media Server Administration Panel</p>
+                {{if .IsLocalhost}}
+                    <span class="status-badge status-local">Localhost Access</span>
+                {{else}}
+                    <span class="status-badge status-active">Authorized IP</span>
+                {{end}}
+            </div>
+            <div class="auto-refresh">
+                <div id="connection-status" class="connection-status connecting">🟡 Connecting...</div>
+                <span class="last-updated">Real-time dashboard<span class="real-time-badge">LIVE</span></span>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">{{.Stats.ActiveConnections}}</div>
+                <div class="stat-label">Active Connections</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{.Stats.TotalConnections}}</div>
+                <div class="stat-label">Total Connections</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{.Stats.BlockedConnections}}</div>
+                <div class="stat-label">Blocked IPs</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{printf "%.1f MB" (div .Stats.TotalBytesServed 1048576)}}</div>
+                <div class="stat-label">Data Served</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{printf "%.1f KB/s" .Stats.AverageSpeed}}</div>
+                <div class="stat-label">Average Speed</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{.Stats.SystemUptime.Round 1000000000}}</div>
+                <div class="stat-label">System Uptime</div>
+            </div>
+        </div>
+
+        <!-- Dashboard Tabs -->
+        <div class="dashboard-tabs">
+            <button class="tab-button active" onclick="showTab('connections')">🌐 Connections</button>
+            <button class="tab-button" onclick="showTab('performance')">⚡ Performance</button>
+            <button class="tab-button" onclick="showTab('streaming')">📺 Streaming</button>
+            <button class="tab-button" onclick="showTab('cache')">💾 Cache</button>
+            <button class="tab-button" onclick="showTab('users')">👥 Admin Users</button>
+            <button class="tab-button" onclick="showTab('media')">🔒 Media Access</button>
+            <button class="tab-button" onclick="showTab('blocked')">🚫 Blocked IPs</button>
+            <button class="tab-button" onclick="showTab('activity')">📊 Activity Log</button>
+            <button class="tab-button" onclick="showTab('settings')">⚙️ Settings</button>
+        </div>
+
+        <!-- Connections Tab -->
+        <div id="connections-tab" class="tab-content active">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3>Active Connections</h3>
+                <button class="btn btn-primary" onclick="refreshConnections()">🔄 Refresh</button>
+            </div>
+            <table class="connections-table">
+                <thead>
+                    <tr>
+                        <th>IP Address</th>
+                        <th>Location</th>
+                        <th>Connected</th>
+                        <th>Speed</th>
+                        <th>Requests</th>
+                        <th>Data Served</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="connections-tbody">
+                    {{range .ActiveConnections}}
+                    <tr>
+                        <td>{{.IPAddress}}</td>
+                        <td>{{.Location}}</td>
+                        <td>{{.ConnectedAt.Format "15:04:05"}}</td>
+                        <td>{{.GetFormattedSpeed}}</td>
+                        <td>{{.RequestCount}}</td>
+                        <td>{{printf "%.1f MB" (div .BytesServed 1048576)}}</td>
+                        <td>
+                            {{if .IsBlocked}}
+                                <span class="status-badge status-blocked">Blocked</span>
+                            {{else}}
+                                <span class="status-badge status-active">Active</span>
+                            {{end}}
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                {{if .IsBlocked}}
+                                    <button class="btn btn-success" onclick="unblockIP('{{.IPAddress}}')">Unblock</button>
+                                {{else}}
+                                    <button class="btn btn-danger" onclick="blockIP('{{.IPAddress}}')">Block</button>
+                                {{end}}
+                            </div>
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Performance Tab -->
+        <div id="performance-tab" class="tab-content">
+            <h3>System Performance Metrics</h3>
+
+            <div class="performance-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px;">
+                <div class="performance-card">
+                    <h4>🖥️ CPU & Memory</h4>
+                    <div class="metric-row">
+                        <span>CPU Cores:</span>
+                        <span id="cpu-cores" class="metric-value">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>GOMAXPROCS:</span>
+                        <span id="gomaxprocs" class="metric-value">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Goroutines:</span>
+                        <span id="goroutines" class="metric-value">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Memory Usage:</span>
+                        <span id="memory-usage" class="metric-value">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Memory %:</span>
+                        <span id="memory-percent" class="metric-value">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>GC Count:</span>
+                        <span id="gc-count" class="metric-value">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Uptime:</span>
+                        <span id="uptime" class="metric-value">-</span>
+                    </div>
+                </div>
+
+                <div class="performance-card">
+                    <h4>📊 System Load</h4>
+                    <div class="metric-row">
+                        <span>Performance Status:</span>
+                        <span id="performance-status" class="metric-value status-good">Optimal</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Memory Pressure:</span>
+                        <span id="memory-pressure" class="metric-value">Low</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Goroutine Health:</span>
+                        <span id="goroutine-health" class="metric-value">Normal</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>GC Frequency:</span>
+                        <span id="gc-frequency" class="metric-value">Normal</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="worker-pools-section">
+                <h4>🔧 Worker Pools</h4>
+                <div id="worker-pools-container" class="worker-pools-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
+                    <!-- Worker pools will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Streaming Tab -->
+        <div id="streaming-tab" class="tab-content">
+            <h3>Streaming Performance</h3>
+
+            <div class="streaming-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+                <div class="performance-card">
+                    <h4>📊 Current Streaming</h4>
+                    <div class="metric-row">
+                        <span>Active Streams:</span>
+                        <span id="active-streams">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Total Streams:</span>
+                        <span id="total-streams">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Peak Concurrent:</span>
+                        <span id="concurrent-peak">-</span>
+                    </div>
+                </div>
+
+                <div class="performance-card">
+                    <h4>🚀 Performance</h4>
+                    <div class="metric-row">
+                        <span>Average Speed:</span>
+                        <span id="average-speed">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Peak Speed:</span>
+                        <span id="peak-speed">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Total Streamed:</span>
+                        <span id="bytes-streamed">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cache Tab -->
+        <div id="cache-tab" class="tab-content">
+            <h3>Cache Performance</h3>
+
+            <div class="cache-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+                <div class="performance-card">
+                    <h4>💾 Cache Status</h4>
+                    <div class="metric-row">
+                        <span>Cache Size:</span>
+                        <span id="cache-size">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Max Size:</span>
+                        <span id="cache-max-size">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Hit Rate:</span>
+                        <span id="cache-hit-rate">-</span>
+                    </div>
+                </div>
+
+                <div class="performance-card">
+                    <h4>📈 Cache Statistics</h4>
+                    <div class="metric-row">
+                        <span>Hit Count:</span>
+                        <span id="cache-hit-count">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Miss Count:</span>
+                        <span id="cache-miss-count">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Evictions:</span>
+                        <span id="cache-evictions">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Users Tab -->
+        <div id="users-tab" class="tab-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3>Admin Users</h3>
+                <button class="btn btn-primary" onclick="showAddUserModal()">➕ Add User</button>
+            </div>
+            <table class="users-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>IP Address</th>
+                        <th>Created</th>
+                        <th>Last Seen</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .AdminUsers}}
+                    <tr>
+                        <td>{{.Name}}</td>
+                        <td>{{.IPAddress}}</td>
+                        <td>{{.CreatedAt.Format "2006-01-02 15:04"}}</td>
+                        <td>{{.LastSeen.Format "2006-01-02 15:04"}}</td>
+                        <td>
+                            {{if .IsActive}}
+                                <span class="status-badge status-active">Active</span>
+                            {{else}}
+                                <span class="status-badge status-blocked">Inactive</span>
+                            {{end}}
+                        </td>
+                        <td>
+                            <button class="btn btn-danger" onclick="removeUser('{{.IPAddress}}', '{{.Name}}')">Remove</button>
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Media Access Tab -->
+        <div id="media-tab" class="tab-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3>Password-Protected Media</h3>
+                <button class="btn btn-primary" onclick="showMediaPasswordModal()">🔒 Set Password</button>
+            </div>
+            <p>Manage password protection for specific media files.</p>
+            <div class="form-group">
+                <label>Media Path:</label>
+                <input type="text" id="mediaPathInput" placeholder="Enter media file path (e.g., videos/movie.mp4)">
+            </div>
+            <div class="form-group">
+                <label>Password:</label>
+                <input type="password" id="mediaPasswordInput" placeholder="Enter password">
+            </div>
+            <button class="btn btn-primary" onclick="setMediaPassword()">Set Password</button>
+        </div>
+
+        <!-- Activity Log Tab -->
+        <div id="activity-tab" class="tab-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3>Recent Activity</h3>
+                <button class="btn btn-primary" onclick="refreshActivity()">🔄 Refresh</button>
+            </div>
+            <table class="activity-table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>IP Address</th>
+                        <th>Action</th>
+                        <th>Resource</th>
+                        <th>Status</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody id="activity-tbody">
+                    {{range .Stats.RecentActivity}}
+                    <tr>
+                        <td>{{.Timestamp.Format "15:04:05"}}</td>
+                        <td>{{.IPAddress}}</td>
+                        <td>{{.Action}}</td>
+                        <td>{{.Resource}}</td>
+                        <td>
+                            {{if .Success}}
+                                <span class="status-badge status-active">Success</span>
+                            {{else}}
+                                <span class="status-badge status-blocked">Failed</span>
+                            {{end}}
+                        </td>
+                        <td>{{.Details}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Blocked IPs Tab -->
+        <div id="blocked-tab" class="tab-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3>Blocked IP Addresses</h3>
+                <button class="btn btn-primary" onclick="showBlockIPModal()">🚫 Block IP</button>
+            </div>
+            <div id="blocked-ips-list">
+                <p>No blocked IPs currently. Use the connection monitoring to block problematic IPs.</p>
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="settings-tab" class="tab-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3>Server Settings</h3>
+            </div>
+
+            <div class="settings-section">
+                <h4>🔧 Server Configuration</h4>
+                <div class="form-group">
+                    <label>Media Directory:</label>
+                    <input type="text" id="mediaDir" readonly value="{{.Config.MediaDir}}" style="background: var(--bg-secondary);">
+                </div>
+                <div class="form-group">
+                    <label>Server Port:</label>
+                    <input type="text" id="serverPort" readonly value="{{.Config.Port}}" style="background: var(--bg-secondary);">
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h4>🛡️ Security Settings</h4>
+                <div class="form-group">
+                    <label>Auto-block after failed attempts:</label>
+                    <select id="autoBlockAttempts">
+                        <option value="0">Disabled</option>
+                        <option value="5">5 attempts</option>
+                        <option value="10" selected>10 attempts</option>
+                        <option value="20">20 attempts</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Session timeout (minutes):</label>
+                    <select id="sessionTimeout">
+                        <option value="30">30 minutes</option>
+                        <option value="60" selected>1 hour</option>
+                        <option value="120">2 hours</option>
+                        <option value="0">No timeout</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h4>📊 Monitoring Settings</h4>
+                <div class="form-group">
+                    <label>Connection tracking:</label>
+                    <select id="connectionTracking">
+                        <option value="true" selected>Enabled</option>
+                        <option value="false">Disabled</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Activity log retention (days):</label>
+                    <select id="logRetention">
+                        <option value="7">7 days</option>
+                        <option value="30" selected>30 days</option>
+                        <option value="90">90 days</option>
+                        <option value="365">1 year</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h4>🎬 Media Settings</h4>
+                <div class="form-group">
+                    <label>Default media password protection:</label>
+                    <select id="defaultProtection">
+                        <option value="false" selected>Disabled</option>
+                        <option value="true">Enabled</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Max concurrent streams per IP:</label>
+                    <select id="maxStreams">
+                        <option value="0">Unlimited</option>
+                        <option value="1">1 stream</option>
+                        <option value="3" selected>3 streams</option>
+                        <option value="5">5 streams</option>
+                    </select>
+                </div>
+            </div>
+
+            <button class="btn btn-primary" onclick="saveSettings()">💾 Save Settings</button>
+        </div>
+    </div>
+
+    <!-- Add User Modal -->
+    <div id="addUserModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add Admin User</h3>
+                <button class="close" onclick="closeModal('addUserModal')">&times;</button>
+            </div>
+            <form action="/admin/add-user" method="POST">
+                <div class="form-group">
+                    <label>Name:</label>
+                    <input type="text" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label>IP Address:</label>
+                    <input type="text" name="ip_address" required placeholder="e.g., 192.168.1.100">
+                </div>
+                <button type="submit" class="btn btn-primary">Add User</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Block IP Modal -->
+    <div id="blockIPModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Block IP Address</h3>
+                <button class="close" onclick="closeModal('blockIPModal')">&times;</button>
+            </div>
+            <form onsubmit="blockIPFromModal(event)">
+                <div class="form-group">
+                    <label>IP Address:</label>
+                    <input type="text" id="blockIPAddress" required placeholder="e.g., 192.168.1.100">
+                </div>
+                <div class="form-group">
+                    <label>Reason:</label>
+                    <input type="text" id="blockReason" required placeholder="e.g., Suspicious activity">
+                </div>
+                <button type="submit" class="btn btn-danger">Block IP</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Media Password Modal -->
+    <div id="mediaPasswordModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Set Media Password</h3>
+                <button class="close" onclick="closeModal('mediaPasswordModal')">&times;</button>
+            </div>
+            <form onsubmit="setMediaPasswordFromModal(event)">
+                <div class="form-group">
+                    <label>Media Path:</label>
+                    <input type="text" id="modalMediaPath" required placeholder="e.g., videos/movie.mp4">
+                    <small>Enter the relative path to the media file from the media directory</small>
+                </div>
+                <div class="form-group">
+                    <label>Password:</label>
+                    <input type="password" id="modalMediaPassword" required placeholder="Enter password">
+                </div>
+                <button type="submit" class="btn btn-primary">Set Password</button>
+            </form>
+        </div>
+    </div>
+
+    <style>
+        .settings-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .settings-section h4 {
+            margin: 0 0 15px 0;
+            color: var(--accent-color);
+            font-size: 1.1em;
+        }
+
+        .form-group small {
+            color: var(--text-secondary);
+            font-size: 0.8em;
+            margin-top: 4px;
+            display: block;
+        }
+
+        .stats-grid {
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        }
+
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+
+    <script src="/static/js/main.js"></script>
+    <script src="/static/js/admin.js"></script>
+</body>
+</html>

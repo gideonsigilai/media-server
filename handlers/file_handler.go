@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"html/template"
 	"log"
 	"media-server/config"
@@ -8,13 +9,16 @@ import (
 	"media-server/services"
 	"media-server/utils"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
 // FileHandler handles file listing and navigation
 type FileHandler struct {
-	fileService *services.FileService
-	templates   *template.Template
+	fileService        *services.FileService
+	templates          *template.Template
+	cacheService       *services.CacheService
+	performanceService *services.PerformanceService
 }
 
 // NewFileHandler creates a new FileHandler instance
@@ -28,6 +32,41 @@ func NewFileHandler(cfg *config.Config) *FileHandler {
 		"joinPath":       utils.JoinPath,
 		"formatFileSize": utils.FormatFileSize,
 		"trimPrefix":     strings.TrimPrefix,
+		"div": func(a, b interface{}) float64 {
+			var aFloat, bFloat float64
+
+			switch v := a.(type) {
+			case int64:
+				aFloat = float64(v)
+			case int:
+				aFloat = float64(v)
+			case float64:
+				aFloat = v
+			case string:
+				if parsed, err := strconv.ParseFloat(v, 64); err == nil {
+					aFloat = parsed
+				}
+			}
+
+			switch v := b.(type) {
+			case int64:
+				bFloat = float64(v)
+			case int:
+				bFloat = float64(v)
+			case float64:
+				bFloat = v
+			case string:
+				if parsed, err := strconv.ParseFloat(v, 64); err == nil {
+					bFloat = parsed
+				}
+			}
+
+			if bFloat == 0 {
+				return 0
+			}
+			return aFloat / bFloat
+		},
+		"printf": fmt.Sprintf,
 	}
 
 	log.Println("Loading templates from views/templates/*.html")
@@ -40,6 +79,71 @@ func NewFileHandler(cfg *config.Config) *FileHandler {
 	return &FileHandler{
 		fileService: fileService,
 		templates:   templates,
+	}
+}
+
+// NewFileHandlerWithServices creates a new FileHandler instance with enhanced services
+func NewFileHandlerWithServices(cfg *config.Config, cacheService *services.CacheService,
+	performanceService *services.PerformanceService) *FileHandler {
+
+	log.Println("Creating FileHandler with enhanced services...")
+	fileService := services.NewFileServiceWithCache(cfg.MediaDir, cacheService, performanceService)
+
+	// Load templates with custom functions
+	funcMap := template.FuncMap{
+		"splitPath":      utils.SplitPath,
+		"joinPath":       utils.JoinPath,
+		"formatFileSize": utils.FormatFileSize,
+		"trimPrefix":     strings.TrimPrefix,
+		"div": func(a, b interface{}) float64 {
+			var aFloat, bFloat float64
+
+			switch v := a.(type) {
+			case int64:
+				aFloat = float64(v)
+			case int:
+				aFloat = float64(v)
+			case float64:
+				aFloat = v
+			case string:
+				if parsed, err := strconv.ParseFloat(v, 64); err == nil {
+					aFloat = parsed
+				}
+			}
+
+			switch v := b.(type) {
+			case int64:
+				bFloat = float64(v)
+			case int:
+				bFloat = float64(v)
+			case float64:
+				bFloat = v
+			case string:
+				if parsed, err := strconv.ParseFloat(v, 64); err == nil {
+					bFloat = parsed
+				}
+			}
+
+			if bFloat == 0 {
+				return 0
+			}
+			return aFloat / bFloat
+		},
+		"printf": fmt.Sprintf,
+	}
+
+	log.Println("Loading templates from views/templates/*.html")
+	templates, err := template.New("").Funcs(funcMap).ParseGlob("views/templates/*.html")
+	if err != nil {
+		log.Fatalf("Error loading templates: %v", err)
+	}
+	log.Println("Templates loaded successfully")
+
+	return &FileHandler{
+		fileService:        fileService,
+		templates:          templates,
+		cacheService:       cacheService,
+		performanceService: performanceService,
 	}
 }
 

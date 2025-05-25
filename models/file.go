@@ -84,19 +84,19 @@ func (f *FileInfo) GetMediaType() string {
 	}
 
 	ext := strings.ToLower(f.Extension)
-	
+
 	videoExts := map[string]bool{
 		".mp4": true, ".mkv": true, ".avi": true, ".mov": true,
 		".wmv": true, ".flv": true, ".webm": true, ".m4v": true,
 		".3gp": true, ".ts": true, ".mts": true, ".m2ts": true,
 	}
-	
+
 	audioExts := map[string]bool{
 		".mp3": true, ".wav": true, ".aac": true, ".ogg": true,
 		".flac": true, ".m4a": true, ".wma": true, ".opus": true,
 		".aiff": true,
 	}
-	
+
 	imageExts := map[string]bool{
 		".jpg": true, ".jpeg": true, ".png": true, ".gif": true,
 		".bmp": true, ".webp": true, ".svg": true, ".tiff": true,
@@ -112,7 +112,7 @@ func (f *FileInfo) GetMediaType() string {
 	if imageExts[ext] {
 		return "image"
 	}
-	
+
 	return "file"
 }
 
@@ -121,7 +121,7 @@ func (f *FileInfo) GetIcon() string {
 	if f.IsDir {
 		return "📁"
 	}
-	
+
 	switch f.GetMediaType() {
 	case "video":
 		return "🎬"
